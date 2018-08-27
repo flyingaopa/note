@@ -1,0 +1,70 @@
+共享库
+--------
+
+静态库:
+a) 用ar命令创建和维护静态库
+ar options archive object-file...
+
+1. 创建
+ar r libdemo.a mod1.o mod2.o mod3.o
+
+2. 查询
+ar tv libdemo.a
+
+3. 删除
+ar d libdemo.a mod3.o
+
+b) 使用
+链接是指定静态库或放到链接器搜索目录中加-l 选项
+
+--------
+
+共享库开销：
+1) 创建和使用比静态库复杂
+2) 编译是指定位置独立代码pic带来更多开销
+3) 运行是要执行符号重定位
+
+
+创建:
+1) gcc -c -fPIC -Wall mod1.c mod2.c mod3.c
+2) gcc -shared -o libfoo.so mod1.o mod2.o mod3.o
+
+检查object 是否使用PIC选项，可以检查object 符号表是否有_GLOBAL_OFFSET_TABLE_
+nm mod1.o | grep _GLOBAL_OFFSET_TABLE_
+readelf -s mod1.o | grep _GLOBAL_OFFSET_TABLE_
+
+
+使用：
+1) 在链接阶段将共享库名称嵌入到可执行文件中(DT_NEEDED)
+2) 运行阶段解析库名，找出共享库文件
+由动态链接器/lib/ld-linux.so.2 来完成
+
+soname:
+上面链接阶段嵌入的共享库名字是realname, 有时可以使用别名soname，目的是在运行时
+可以使用与链接时不同(兼容)的库
+
+gcc -shared -Wl, -soname, libbar.so -o libfoo.so mod1.o mod2.o mod3.o
+
+可以用objdump/readelf来查看SONAME
+objdump -p libfoo.so | grep SONAME
+readelf -d libfoo.so | grep SONAME
+
+真实名称、soname、链接器名称
+真实名称: libfoo.so.1.0.1
+soname: libfoo.so.1
+链接器名称: libfoo.so
+
+符号链接
+libfoo.so.1  ----> libfoo.so.1.0.1
+libfoo.so    ----> libfoo.so.1或 libfoo.so.1.0.1
+
+
+安装共享库:
+ldconfig
+
+查找顺序:
+1. 有RPATH且没有RUNPATH, 搜索 
+2. LD_LIBRARY_PATH（注：如果是set-user-id 程序，忽略)
+3. RUNPATH
+4. /etc/ld.so.cache
+5. /lib, /usr/lib
